@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeetingNote</title>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+  <script>
+    // 첫 화면 깜빡임을 막기 위해 테마를 먼저 적용한다. 저장값이 없으면 시스템 설정을 따른다.
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('theme'); } catch (e) { theme = null; }
+      var dark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', dark);
+    })();
+  </script>
+</head>
+<body class="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-100 to-slate-200 text-slate-800 antialiased dark:from-neutral-900 dark:to-neutral-950 dark:text-neutral-100">
+
+  <header class="sticky top-0 z-30 border-b border-white/40 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/60">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
+      <div class="flex min-w-0 items-baseline gap-2">
+        <span class="text-lg font-semibold">MeetingNote</span>
+        <span class="hidden truncate text-sm text-slate-500 dark:text-neutral-400 sm:inline">회의록 자동 정리</span>
+      </div>
+      <nav class="flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <button type="button" data-tab="list" class="whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm sm:px-3">목록</button>
+        <button type="button" data-tab="new" class="whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm sm:px-3">넣기</button>
+        <button type="button" data-tab="todos" class="whitespace-nowrap rounded-full px-2.5 py-1.5 text-sm sm:px-3">할일</button>
+        <button type="button" data-role="theme" aria-label="테마 전환" class="rounded-full px-2.5 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/10">◐</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-6">
+
+    <!-- 화면 1: 목록 -->
+    <section data-view="list">
+      <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+        <input id="q" type="search" placeholder="제목 또는 참석자로 검색"
+          class="w-full rounded-xl border border-black/10 bg-white/70 px-4 py-2.5 text-sm shadow-sm outline-none backdrop-blur focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10">
+        <label class="flex items-center gap-2 text-sm text-slate-500 dark:text-neutral-400">from
+          <input id="from" type="date" class="min-w-0 flex-1 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none dark:border-white/10 dark:bg-white/10">
+        </label>
+        <label class="flex items-center gap-2 text-sm text-slate-500 dark:text-neutral-400">to
+          <input id="to" type="date" class="min-w-0 flex-1 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none dark:border-white/10 dark:bg-white/10">
+        </label>
+      </div>
+      <p data-role="listStatus" class="mb-3 text-sm text-slate-500 dark:text-neutral-400"></p>
+      <div id="cards" class="grid grid-cols-1 gap-4 sm:grid-cols-2"></div>
+    </section>
+
+    <!-- 화면 2: 넣기 -->
+    <section data-view="new" class="hidden">
+      <div class="space-y-4 rounded-2xl border border-white/50 bg-white/60 p-4 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-white/5 sm:p-6">
+        <label class="block text-sm font-medium">제목
+          <input id="title" type="text" maxlength="200"
+            class="mt-1 w-full rounded-xl border border-black/10 bg-white/80 px-4 py-2.5 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10">
+        </label>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-medium">일시
+            <input id="metAt" type="datetime-local"
+              class="mt-1 w-full rounded-xl border border-black/10 bg-white/80 px-4 py-2.5 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10">
+          </label>
+          <label class="block text-sm font-medium">참석자 (쉼표로 구분)
+            <input id="attendees" type="text"
+              class="mt-1 w-full rounded-xl border border-black/10 bg-white/80 px-4 py-2.5 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10">
+          </label>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input id="file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav"
+            class="min-w-0 flex-1 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-slate-200 file:px-4 file:py-2 file:text-sm dark:file:bg-white/10">
+          <button id="btnUp" type="button"
+            class="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 disabled:opacity-50">받아쓰기</button>
+          <span data-role="upStatus" class="text-sm text-slate-500 dark:text-neutral-400"></span>
+        </div>
+        <label class="block text-sm font-medium">본문 (받아쓴 원문 또는 붙여넣은 메모)
+          <textarea id="body" rows="10"
+            class="mt-1 w-full rounded-xl border border-black/10 bg-white/80 px-4 py-3 text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10"></textarea>
+        </label>
+        <div class="flex items-center gap-3">
+          <button id="btnSave" type="button"
+            class="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow hover:bg-blue-700 disabled:opacity-50">정리하기</button>
+          <span data-role="saveStatus" class="text-sm text-slate-500 dark:text-neutral-400"></span>
+        </div>
+      </div>
+      <div id="result" class="mt-4 hidden"></div>
+    </section>
+
+    <!-- 화면 4: 할일 -->
+    <section data-view="todos" class="hidden">
+      <p data-role="todoStatus" class="mb-3 text-sm text-slate-500 dark:text-neutral-400"></p>
+      <div class="overflow-x-auto rounded-2xl border border-white/50 bg-white/60 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+        <table class="w-full min-w-[560px] text-left text-sm">
+          <thead class="border-b border-black/10 text-slate-500 dark:border-white/10 dark:text-neutral-400">
+            <tr>
+              <th class="px-4 py-3 font-medium">내용</th>
+              <th class="px-4 py-3 font-medium">담당자</th>
+              <th class="px-4 py-3 font-medium">기한</th>
+              <th class="px-4 py-3 font-medium">회의</th>
+            </tr>
+          </thead>
+          <tbody id="todoBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 화면 3: 상세 (가운데 겹침 창) -->
+  <div id="modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/40 p-4">
+    <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/50 bg-white/90 p-5 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/90 sm:p-6">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 data-role="detailTitle" class="break-words text-xl font-semibold"></h2>
+          <p data-role="detailMeta" class="mt-1 text-sm text-slate-500 dark:text-neutral-400"></p>
+        </div>
+        <button type="button" data-role="closeModal" class="shrink-0 rounded-full px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/10">닫기</button>
+      </div>
+      <div data-role="detailColumns" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
+      <details class="mt-4 rounded-xl bg-black/5 p-3 dark:bg-white/5">
+        <summary class="cursor-pointer text-sm font-medium">받아쓴 본문 보기</summary>
+        <p data-role="detailBody" class="mt-2 whitespace-pre-wrap break-words text-sm"></p>
+      </details>
+      <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input id="mTitle" type="text" maxlength="200" aria-label="제목 수정"
+          class="min-w-0 flex-1 rounded-xl border border-black/10 bg-white/80 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-white/10 dark:bg-white/10">
+        <button type="button" data-role="renameBtn" class="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 disabled:opacity-50">제목 수정</button>
+        <button type="button" data-role="deleteBtn" class="rounded-full bg-red-500/10 px-5 py-2 text-sm font-medium text-red-600 hover:bg-red-500/20 dark:text-red-400">삭제</button>
+      </div>
+      <p data-role="modalStatus" class="mt-2 text-sm text-slate-500 dark:text-neutral-400"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
